@@ -12,22 +12,38 @@
 :- use_module(server(utils/logger)).
 :- use_module(server(routes/api_queries)).
 
-:- http_handler(root(.), ui_page, []).
-:- http_handler(root('app.js'), serve_app_js, []).
+% ===========================
+%  HANDLERS
+% ===========================
 
-:- http_handler(root(api/ping), api_ping_handler, [method(get)]).
-:- http_handler(root(api/symptoms), api_symptoms_handler, [method(get)]).
-:- http_handler(root(api), handle_api_request, [prefix]).
-:- http_handler(root(api), cors_options_handler, [method(options), prefix]).
+:- http_handler('/', ui_page, []).
+:- http_handler('/app.js', serve_app_js, []).
+
+:- http_handler('/api/ping', api_ping_handler, [method(get)]).
+:- http_handler('/api/symptoms', api_symptoms_handler, [method(get)]).
+:- http_handler('/api/diagnose', api_diagnose_handler, [method(post)]).
+:- http_handler('/api/sintomas_de', api_sintomas_de_handler, [method(post)]).
+:- http_handler('/api/enfermedades_por_sintoma', api_enfermedades_por_sintoma_handler, [method(post)]).
+:- http_handler('/api/categoria_enfermedad', api_categoria_enfermedad_handler, [method(post)]).
+:- http_handler('/api/enfermedades_posibles', api_enfermedades_posibles_handler, [method(post)]).
+:- http_handler('/api', cors_options_handler, [method(options), prefix]).
+
+% ===========================
+%  CORS
+% ===========================
 
 add_cors_headers :-
 	format('Access-Control-Allow-Origin: *~n'),
-	format('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS~n'),
+	format('Access-Control-Allow-Methods: GET, POST, OPTIONS~n'),
 	format('Access-Control-Allow-Headers: Content-Type, Authorization, Accept~n').
 
 cors_options_handler(_Request) :-
 	add_cors_headers,
 	format('Status: 204~n~n').
+
+% ===========================
+%  API ROUTES
+% ===========================
 
 api_ping_handler(_Request) :-
 	add_cors_headers,
@@ -37,70 +53,44 @@ api_symptoms_handler(Request) :-
 	add_cors_headers,
 	api_symptoms(Request).
 
-handle_api_request(Request) :-
-	member(path(RawPath),
-		Request),
-	(atom_concat('/', Path, RawPath) ->
-	true;
-	Path = RawPath),
-	normalize_path(Path, Norm),
-	route_api(Norm, Request).
-
-normalize_path(In, Out) :-
-	(sub_atom(In, 0, _, _, '/api/') ->
-	Out = In;
-	atom_concat('/api/', In, Out)).
-
-route_api('/api/diagnose', Request) :-
+api_diagnose_handler(Request) :-
 	add_cors_headers,
-	(member(method(options),
-			Request) ->
-	cors_options_handler(Request);
 	catch(api_diagnose(Request),
-			E,
-			(message_to_string(E, Msg),
-				reply_json_dict(_{
-						error : Msg
-						},
-					[status(500)])))),
-	!.
+		E,
+		(message_to_string(E, Msg),
+			reply_json_dict(_{
+					error : Msg
+					},
+				[status(500)]))).
 
-route_api('/api/symptoms', Request) :-
+api_sintomas_de_handler(Request) :-
 	add_cors_headers,
-	api_symptoms(Request),
-	!.
+	api_queries : api_sintomas_de(Request).
 
-route_api('/api/sintomas_de', Request) :-
+api_enfermedades_por_sintoma_handler(Request) :-
 	add_cors_headers,
-	api_queries : api_sintomas_de(Request),
-	!.
+	api_queries : api_enfermedades_por_sintoma(Request).
 
-route_api('/api/enfermedades_por_sintoma', Request) :-
+api_categoria_enfermedad_handler(Request) :-
 	add_cors_headers,
-	api_queries : api_enfermedades_por_sintoma(Request),
-	!.
+	api_queries : api_categoria_enfermedad(Request).
 
-route_api('/api/categoria_enfermedad', Request) :-
+api_enfermedades_posibles_handler(Request) :-
 	add_cors_headers,
-	api_queries : api_categoria_enfermedad(Request),
-	!.
+	api_queries : api_enfermedades_posibles(Request).
 
-route_api('/api/enfermedades_posibles', Request) :-
-	add_cors_headers,
-	api_queries : api_enfermedades_posibles(Request),
-	!.
-
-route_api(_, Request) :-
-	add_cors_headers,
-	reply_json_dict(_{
-			error : 'Ruta no encontrada'
-			},
-		[status(404)]).
+% ===========================
+%  STATIC FILES
+% ===========================
 
 serve_app_js(_Request) :-
 	http_reply_file('./static/app.js',
 		[unsafe(true), mime_type('application/javascript')],
 		[]).
+
+% ===========================
+%  SERVER CONTROL
+% ===========================
 
 server(Port) :-
 	ignore(stop_all),
