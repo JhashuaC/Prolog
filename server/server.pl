@@ -13,18 +13,23 @@
 :- use_module(server(utils/logger)).
 
 % ===========================
-%  CORS: PERMITIR TODO
+%  CORS Y PRE-FLIGHT LIBRE
 % ===========================
 
 allow_all(_Request) :-
-	format('Access-Control-Allow-Origin: *~n'),
-	format('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS~n'),
-	format('Access-Control-Allow-Headers: *~n').
+    format('Access-Control-Allow-Origin: *~n'),
+    format('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS~n'),
+    format('Access-Control-Allow-Headers: *~n').
 
-% Handler genérico para OPTIONS (preflight)
+% Handler global de preflight OPTIONS
 :- http_handler('/',
-    (   allow_all(_),
-        format('~n'), halt), [method(options), prefix]).
+    cors_any_options_handler,
+    [method(options), prefix]).
+
+cors_any_options_handler(Request) :-
+    allow_all(Request),
+    format('Content-type: text/plain~n~n'),
+    format('OK~n').
 
 % ===========================
 %  HANDLERS
