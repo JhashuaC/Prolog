@@ -17,9 +17,15 @@
 % ===========================
 
 send_cors_headers :-
-	format('Access-Control-Allow-Origin: *~n'),
-	format('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS~n'),
-	format('Access-Control-Allow-Headers: Content-Type, Authorization, Accept, *~n').
+    (   getenv('ENV', 'production')
+    ->  Origin = 'https://diagme.vercel.app'
+    ;   Origin = '*'
+    ),
+    format('Access-Control-Allow-Origin: ~w~n', [Origin]),
+    format('Vary: Origin~n'),
+    format('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS~n'),
+    format('Access-Control-Allow-Headers: Content-Type, Authorization, Accept~n'),
+    format('Access-Control-Allow-Credentials: true~n').
 
 % Handler global que atrapa todas las peticiones OPTIONS
 :- http_handler('/', handle_options, [method(options), prefix]).
@@ -120,12 +126,3 @@ stop :-
 				true))),
 	log(green, 'Servidores detenidos.~n', []).
 
-% ===========================
-%  CORS FIX PARA TODAS LAS RUTAS /api
-% ===========================
-:- http_handler(root(api), handle_api_options, [method(options), prefix]).
-
-handle_api_options(_Request) :-
-    send_cors_headers,
-    format('Content-type: text/plain~n~n'),
-    format('OK~n').
