@@ -4,7 +4,6 @@
 :- use_module(library(http/thread_httpd)).
 :- use_module(library(http/http_dispatch)).
 :- use_module(library(http/http_json)).
-:- use_module(library(http/http_cors)).
 
 :- use_module(server(routes/api_diagnose)).
 :- use_module(server(routes/api_symptoms)).
@@ -13,16 +12,13 @@
 :- use_module(server(utils/logger)).
 
 % ===========================
-%  CORS CONFIG
+%  CABECERAS LIBRES (sin CORS)
 % ===========================
 
-:- set_setting(http:cors, [*]).
-:- set_setting(http:cors_headers, ['Content-Type', 'Authorization', 'Accept']).
-
-enable_cors(Request) :-
-	cors_enable(Request,
-		[
-			methods([get, post, options])]).
+allow_all_headers :-
+	format('Access-Control-Allow-Origin: *~n'),
+	format('Access-Control-Allow-Methods: GET, POST, OPTIONS, PUT, DELETE~n'),
+	format('Access-Control-Allow-Headers: *~n').
 
 % ===========================
 %  HANDLERS
@@ -31,53 +27,37 @@ enable_cors(Request) :-
 :- http_handler('/', ui_page, []).
 :- http_handler('/app.js', serve_app_js, []).
 
-:- http_handler('/api/ping', api_ping_handler, [method(get)]).
-:- http_handler('/api/symptoms', api_symptoms_handler, [method(get)]).
-
-:- http_handler('/api/diagnose', api_diagnose_handler, [method(post)]).
-:- http_handler('/api/diagnose', cors_options_handler, [method(options)]).
-
-:- http_handler('/api/sintomas_de', api_sintomas_de_handler, [method(post)]).
-:- http_handler('/api/sintomas_de', cors_options_handler, [method(options)]).
-
-:- http_handler('/api/enfermedades_por_sintoma', api_enfermedades_por_sintoma_handler, [method(post)]).
-:- http_handler('/api/enfermedades_por_sintoma', cors_options_handler, [method(options)]).
-
-:- http_handler('/api/categoria_enfermedad', api_categoria_enfermedad_handler, [method(post)]).
-:- http_handler('/api/categoria_enfermedad', cors_options_handler, [method(options)]).
-
-:- http_handler('/api/enfermedades_posibles', api_enfermedades_posibles_handler, [method(post)]).
-:- http_handler('/api/enfermedades_posibles', cors_options_handler, [method(options)]).
+:- http_handler('/api/ping', api_ping_handler, []).
+:- http_handler('/api/symptoms', api_symptoms_handler, []).
+:- http_handler('/api/diagnose', api_diagnose_handler, []).
+:- http_handler('/api/sintomas_de', api_sintomas_de_handler, []).
+:- http_handler('/api/enfermedades_por_sintoma', api_enfermedades_por_sintoma_handler, []).
+:- http_handler('/api/categoria_enfermedad', api_categoria_enfermedad_handler, []).
+:- http_handler('/api/enfermedades_posibles', api_enfermedades_posibles_handler, []).
+:- http_handler('/api/', cors_ok_handler, [method(options), prefix]).
 
 % ===========================
-%  OPTIONS (Preflight)
+%  RESPUESTA GENÉRICA A OPTIONS
 % ===========================
 
-cors_options_handler(Request) :-
-	enable_cors(Request),
-	member(method(options),
-		Request),
-	!,
-	format('Status: 204~n'),
-	format('Access-Control-Allow-Origin: *~n'),
-	format('Access-Control-Allow-Methods: GET, POST, OPTIONS~n'),
-	format('Access-Control-Allow-Headers: Content-Type, Authorization, Accept~n~n').
+cors_ok_handler(_Request) :-
+	allow_all_headers,
+	format('Status: 204~n~n').
 
 % ===========================
 %  API ROUTES
 % ===========================
 
-api_ping_handler(Request) :-
-	enable_cors(Request),
+api_ping_handler(_Request) :-
+	allow_all_headers,
 	reply_json_dict(_{ok : true, ts : now}).
 
 api_symptoms_handler(Request) :-
-	enable_cors(Request),
+	allow_all_headers,
 	api_symptoms(Request).
 
 api_diagnose_handler(Request) :-
-	enable_cors(Request),
-	log(gray, '[API] POST /api/diagnose~n', []),
+	allow_all_headers,
 	catch(api_diagnose(Request),
 		E,
 		(message_to_string(E, Msg),
@@ -87,23 +67,19 @@ api_diagnose_handler(Request) :-
 				[status(500)]))).
 
 api_sintomas_de_handler(Request) :-
-	enable_cors(Request),
-	log(gray, '[API] POST /api/sintomas_de~n', []),
+	allow_all_headers,
 	api_queries : api_sintomas_de(Request).
 
 api_enfermedades_por_sintoma_handler(Request) :-
-	enable_cors(Request),
-	log(gray, '[API] POST /api/enfermedades_por_sintoma~n', []),
+	allow_all_headers,
 	api_queries : api_enfermedades_por_sintoma(Request).
 
 api_categoria_enfermedad_handler(Request) :-
-	enable_cors(Request),
-	log(gray, '[API] POST /api/categoria_enfermedad~n', []),
+	allow_all_headers,
 	api_queries : api_categoria_enfermedad(Request).
 
 api_enfermedades_posibles_handler(Request) :-
-	enable_cors(Request),
-	log(gray, '[API] POST /api/enfermedades_posibles~n', []),
+	allow_all_headers,
 	api_queries : api_enfermedades_posibles(Request).
 
 % ===========================
@@ -111,6 +87,7 @@ api_enfermedades_posibles_handler(Request) :-
 % ===========================
 
 serve_app_js(_Request) :-
+	allow_all_headers,
 	http_reply_file('./static/app.js',
 		[unsafe(true), mime_type('application/javascript')],
 		[]).
@@ -129,7 +106,7 @@ server :-
 		E,
 		(log(red, 'Error iniciando servidor: ~w~n', [E]),
 			fail)),
-	log(green, 'Servidor iniciado en puerto ~w (Railway)~n', [Port]).
+	log(green, 'Servidor iniciado en puerto ~w (modo libre, sin CORS)~n', [Port]).
 
 stop :-
 	findall(P,
