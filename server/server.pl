@@ -20,8 +20,7 @@
 :- http_handler(root(api/ping), api_ping_handler, [method(get)]).
 :- http_handler(root(api/symptoms), api_symptoms_handler, [method(get)]).
 
-:- http_handler(root(api/diagnose), api_diagnose_handler, [method(post)]).
-:- http_handler(root(api/diagnose), cors_options_handler, [method(options)]).
+:- http_handler(root(api/diagnose), api_diagnose_handler, []).
 
 :- http_handler(root(api/sintomas_de), api_sintomas_de_handler, [method(post)]).
 :- http_handler(root(api/sintomas_de), cors_options_handler, [method(options)]).
