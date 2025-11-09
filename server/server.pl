@@ -54,7 +54,13 @@ api_symptoms_handler(Request) :-
 
 api_diagnose_handler(Request) :-
 	add_cors_headers,
-	api_diagnose(Request).
+	catch(api_diagnose(Request),
+		E,
+		(message_to_string(E, Msg),
+			reply_json_dict(_{
+					error : Msg
+					},
+				[status(500)]))).
 
 api_sintomas_de_handler(Request) :-
 	add_cors_headers,
