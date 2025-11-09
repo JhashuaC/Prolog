@@ -98,13 +98,13 @@ serve_app_js(_Request) :-
 server :-
 	(getenv('PORT', PortAtom) ->
 	atom_number(PortAtom, Port);
-	Port = 3000),
+	Port = 8080),
 	catch(http_server(http_dispatch,
 			[port(Port), ip('0.0.0.0'), encoding(utf8)]),
 		E,
 		(log(red, 'Error iniciando servidor: ~w~n', [E]),
 			fail)),
-	log(green, '🌎 Servidor iniciado en puerto ~w (sin restricciones de CORS)~n', [Port]).
+	log(green, ' Servidor iniciado en puerto ~w (sin restricciones de CORS)~n', [Port]).
 
 stop :-
 	findall(P,
