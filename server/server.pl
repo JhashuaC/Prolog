@@ -4,7 +4,6 @@
 :- use_module(library(http/thread_httpd)).
 :- use_module(library(http/http_dispatch)).
 :- use_module(library(http/http_json)).
-:- use_module(library(http/http_cors)).
 
 :- use_module(server(routes/api_diagnose)).
 :- use_module(server(routes/api_symptoms)).
@@ -13,19 +12,24 @@
 :- use_module(server(utils/logger)).
 
 % ===========================
-%  CORS CONFIG — TODO PERMITIDO
+%  CORS Y RESPUESTA GLOBAL
 % ===========================
 
-:- set_setting(http:cors, [*]).  % permitir todos los orígenes
+send_cors_headers :-
+	format('Access-Control-Allow-Origin: *~n'),
+	format('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS~n'),
+	format('Access-Control-Allow-Headers: Content-Type, Authorization, Accept, *~n').
 
-enable_cors(Request) :-
-	cors_enable(Request,
-		[
-			methods([get, post, options]),
-			headers(['Content-Type', 'Authorization', 'Accept'])]).
+% Handler global que atrapa todas las peticiones OPTIONS
+:- http_handler('/', handle_options, [method(options), prefix]).
+
+handle_options(_Request) :-
+	send_cors_headers,
+	format('Content-type: text/plain~n~n'),
+	format('OK~n').
 
 % ===========================
-%  HANDLERS
+%  HANDLERS NORMALES
 % ===========================
 
 :- http_handler('/', ui_page, [prefix]).
@@ -38,31 +42,21 @@ enable_cors(Request) :-
 :- http_handler('/api/enfermedades_por_sintoma', api_enfermedades_por_sintoma_handler, [prefix]).
 :- http_handler('/api/categoria_enfermedad', api_categoria_enfermedad_handler, [prefix]).
 :- http_handler('/api/enfermedades_posibles', api_enfermedades_posibles_handler, [prefix]).
-:- http_handler('/', cors_options_handler, [method(options), prefix]).
-
-% ===========================
-%  OPTIONS (Preflight)
-% ===========================
-
-cors_options_handler(Request) :-
-	enable_cors(Request),
-	format('Content-type: text/plain~n~n'),
-	format('OK~n').
 
 % ===========================
 %  API ROUTES
 % ===========================
 
-api_ping_handler(Request) :-
-	enable_cors(Request),
+api_ping_handler(_Request) :-
+	send_cors_headers,
 	reply_json_dict(_{ok : true, ts : now}).
 
 api_symptoms_handler(Request) :-
-	enable_cors(Request),
+	send_cors_headers,
 	api_symptoms(Request).
 
 api_diagnose_handler(Request) :-
-	enable_cors(Request),
+	send_cors_headers,
 	catch(api_diagnose(Request),
 		E,
 		(message_to_string(E, Msg),
@@ -72,27 +66,27 @@ api_diagnose_handler(Request) :-
 				[status(500)]))).
 
 api_sintomas_de_handler(Request) :-
-	enable_cors(Request),
+	send_cors_headers,
 	api_queries : api_sintomas_de(Request).
 
 api_enfermedades_por_sintoma_handler(Request) :-
-	enable_cors(Request),
+	send_cors_headers,
 	api_queries : api_enfermedades_por_sintoma(Request).
 
 api_categoria_enfermedad_handler(Request) :-
-	enable_cors(Request),
+	send_cors_headers,
 	api_queries : api_categoria_enfermedad(Request).
 
 api_enfermedades_posibles_handler(Request) :-
-	enable_cors(Request),
+	send_cors_headers,
 	api_queries : api_enfermedades_posibles(Request).
 
 % ===========================
 %  STATIC FILES
 % ===========================
 
-serve_app_js(Request) :-
-	enable_cors(Request),
+serve_app_js(_Request) :-
+	send_cors_headers,
 	http_reply_file('./static/app.js',
 		[unsafe(true), mime_type('application/javascript')],
 		[]).
@@ -110,7 +104,7 @@ server :-
 		E,
 		(log(red, 'Error iniciando servidor: ~w~n', [E]),
 			fail)),
-	log(green, 'Servidor iniciado en puerto ~w (modo abierto)~n', [Port]).
+	log(green, '🌎 Servidor iniciado en puerto ~w (sin restricciones de CORS)~n', [Port]).
 
 stop :-
 	findall(P,
