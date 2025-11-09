@@ -38,37 +38,64 @@ api_symptoms_handler(Request) :-
 	api_symptoms(Request).
 
 handle_api_request(Request) :-
-	member(path(Path),
+	member(path(RawPath),
 		Request),
-	(sub_atom(Path, _, _, 0, '/api/diagnose') ->
+	(atom_concat('/', Path, RawPath) ->
+	true;
+	Path = RawPath),
+	normalize_path(Path, Norm),
+	route_api(Norm, Request).
+
+normalize_path(In, Out) :-
+	(sub_atom(In, 0, _, _, '/api/') ->
+	Out = In;
+	atom_concat('/api/', In, Out)).
+
+route_api('/api/diagnose', Request) :-
+	add_cors_headers,
 	(member(method(options),
-				Request) ->
+			Request) ->
 	cors_options_handler(Request);
+	catch(api_diagnose(Request),
+			E,
+			(message_to_string(E, Msg),
+				reply_json_dict(_{
+						error : Msg
+						},
+					[status(500)])))),
+	!.
+
+route_api('/api/symptoms', Request) :-
 	add_cors_headers,
-			catch(api_diagnose(Request),
-				E,
-				(message_to_string(E, Msg),
-					reply_json_dict(_{
-							error : Msg
-							},
-						[status(500)]))));
-	sub_atom(Path, _, _, 0, '/api/sintomas_de') ->
+	api_symptoms(Request),
+	!.
+
+route_api('/api/sintomas_de', Request) :-
 	add_cors_headers,
-		api_queries : api_sintomas_de(Request);
-	sub_atom(Path, _, _, 0, '/api/enfermedades_por_sintoma') ->
+	api_queries : api_sintomas_de(Request),
+	!.
+
+route_api('/api/enfermedades_por_sintoma', Request) :-
 	add_cors_headers,
-		api_queries : api_enfermedades_por_sintoma(Request);
-	sub_atom(Path, _, _, 0, '/api/categoria_enfermedad') ->
+	api_queries : api_enfermedades_por_sintoma(Request),
+	!.
+
+route_api('/api/categoria_enfermedad', Request) :-
 	add_cors_headers,
-		api_queries : api_categoria_enfermedad(Request);
-	sub_atom(Path, _, _, 0, '/api/enfermedades_posibles') ->
+	api_queries : api_categoria_enfermedad(Request),
+	!.
+
+route_api('/api/enfermedades_posibles', Request) :-
 	add_cors_headers,
-		api_queries : api_enfermedades_posibles(Request);
+	api_queries : api_enfermedades_posibles(Request),
+	!.
+
+route_api(_, Request) :-
 	add_cors_headers,
-		reply_json_dict(_{
-				error : 'Ruta no encontrada'
-				},
-			[status(404)])).
+	reply_json_dict(_{
+			error : 'Ruta no encontrada'
+			},
+		[status(404)]).
 
 serve_app_js(_Request) :-
 	http_reply_file('./static/app.js',
