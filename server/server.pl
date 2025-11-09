@@ -12,8 +12,6 @@
 :- use_module(server(utils/logger)).
 :- use_module(server(routes/api_queries)).
 
-:- set_setting(http:cors, [*]).
-
 :- http_handler(root(.), ui_page, []).
 :- http_handler(root('app.js'), serve_app_js, []).
 
