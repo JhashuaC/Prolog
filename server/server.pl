@@ -43,23 +43,17 @@ handle_api_request(Request) :-
 	member(path(Path),
 		Request),
 	(sub_atom(Path, _, _, 0, '/api/diagnose') ->
-	add_cors_headers,
-		(member(method(post),
+	(member(method(options),
 				Request) ->
-	catch(api_diagnose(Request),
+	cors_options_handler(Request);
+	add_cors_headers,
+			catch(api_diagnose(Request),
 				E,
 				(message_to_string(E, Msg),
 					reply_json_dict(_{
 							error : Msg
 							},
-						[status(500)])));
-	member(method(options),
-				Request) ->
-	cors_options_handler(Request);
-	reply_json_dict(_{
-					error : 'Método no permitido'
-					},
-				[status(405)]));
+						[status(500)]))));
 	sub_atom(Path, _, _, 0, '/api/sintomas_de') ->
 	add_cors_headers,
 		api_queries : api_sintomas_de(Request);
@@ -72,7 +66,8 @@ handle_api_request(Request) :-
 	sub_atom(Path, _, _, 0, '/api/enfermedades_posibles') ->
 	add_cors_headers,
 		api_queries : api_enfermedades_posibles(Request);
-	reply_json_dict(_{
+	add_cors_headers,
+		reply_json_dict(_{
 				error : 'Ruta no encontrada'
 				},
 			[status(404)])).
