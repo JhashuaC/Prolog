@@ -17,8 +17,9 @@
 % ===========================
 
 send_cors_headers :-
-    (   getenv('ENV', 'production')
-    ->  Origin = 'https://diagme.vercel.app'
+    (   getenv('HTTP_ORIGIN', Origin),
+        memberchk(Origin, ['https://diagme.vercel.app', 'http://localhost:3000'])
+    ->  true
     ;   Origin = '*'
     ),
     format('Access-Control-Allow-Origin: ~w~n', [Origin]),
