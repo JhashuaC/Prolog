@@ -19,20 +19,12 @@
 
 :- http_handler(root(api/ping), api_ping_handler, [method(get)]).
 :- http_handler(root(api/symptoms), api_symptoms_handler, [method(get)]).
-
 :- http_handler(root(api/diagnose), api_diagnose_handler, []).
-
-:- http_handler(root(api/sintomas_de), api_sintomas_de_handler, [method(post)]).
-:- http_handler(root(api/sintomas_de), cors_options_handler, [method(options)]).
-
-:- http_handler(root(api/enfermedades_por_sintoma), api_enfermedades_por_sintoma_handler, [method(post)]).
-:- http_handler(root(api/enfermedades_por_sintoma), cors_options_handler, [method(options)]).
-
-:- http_handler(root(api/categoria_enfermedad), api_categoria_enfermedad_handler, [method(post)]).
-:- http_handler(root(api/categoria_enfermedad), cors_options_handler, [method(options)]).
-
-:- http_handler(root(api/enfermedades_posibles), api_enfermedades_posibles_handler, [method(post)]).
-:- http_handler(root(api/enfermedades_posibles), cors_options_handler, [method(options)]).
+:- http_handler(root(api/sintomas_de), api_sintomas_de_handler, []).
+:- http_handler(root(api/enfermedades_por_sintoma), api_enfermedades_por_sintoma_handler, []).
+:- http_handler(root(api/categoria_enfermedad), api_categoria_enfermedad_handler, []).
+:- http_handler(root(api/enfermedades_posibles), api_enfermedades_posibles_handler, []).
+:- http_handler(root(api), cors_options_handler, [method(options), prefix]).
 
 add_cors_headers :-
 	format('Access-Control-Allow-Origin: *~n'),
@@ -51,6 +43,11 @@ api_symptoms_handler(Request) :-
 	add_cors_headers,
 	api_symptoms(Request).
 
+api_diagnose_handler(Request) :-
+	member(method(options),
+		Request),
+	!,
+	cors_options_handler(Request).
 api_diagnose_handler(Request) :-
 	add_cors_headers,
 	catch(api_diagnose(Request),
