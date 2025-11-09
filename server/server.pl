@@ -1,5 +1,7 @@
+
 :- module(server, [server/1, stop/0, stop_all/0]).
 :- set_prolog_flag(encoding, utf8).
+
 :- use_module(library(http/thread_httpd)).
 :- use_module(library(http/http_dispatch)).
 :- use_module(library(http/http_json)).
@@ -15,7 +17,7 @@
 
 :- http_handler(root(.), ui_page, []).
 :- http_handler(root('app.js'), serve_app_js, []).
-:- http_handler(root(api/ping), api_ping, [method(get)]).
+:- http_handler(root(api/ping), api_ping_handler, [method(get)]).
 :- http_handler(root(api/symptoms), api_symptoms_handler, [method(get)]).
 :- http_handler(root(api/diagnose), api_diagnose_handler, [method(post)]).
 :- http_handler(root(api/sintomas_de), api_sintomas_de_handler, [method(post)]).
@@ -33,7 +35,7 @@ cors_options_handler(_Request) :-
 	add_cors_headers,
 	format('Status: 204~n~n').
 
-api_ping(Request) :-
+api_ping_handler(_Request) :-
 	add_cors_headers,
 	reply_json_dict(_{ok : true, ts : now}).
 
