@@ -1,4 +1,3 @@
-
 :- module(server, [server/1, stop/0, stop_all/0]).
 :- set_prolog_flag(encoding, utf8).
 
@@ -17,14 +16,24 @@
 
 :- http_handler(root(.), ui_page, []).
 :- http_handler(root('app.js'), serve_app_js, []).
+
 :- http_handler(root(api/ping), api_ping_handler, [method(get)]).
 :- http_handler(root(api/symptoms), api_symptoms_handler, [method(get)]).
+
 :- http_handler(root(api/diagnose), api_diagnose_handler, [method(post)]).
+:- http_handler(root(api/diagnose), cors_options_handler, [method(options)]).
+
 :- http_handler(root(api/sintomas_de), api_sintomas_de_handler, [method(post)]).
+:- http_handler(root(api/sintomas_de), cors_options_handler, [method(options)]).
+
 :- http_handler(root(api/enfermedades_por_sintoma), api_enfermedades_por_sintoma_handler, [method(post)]).
+:- http_handler(root(api/enfermedades_por_sintoma), cors_options_handler, [method(options)]).
+
 :- http_handler(root(api/categoria_enfermedad), api_categoria_enfermedad_handler, [method(post)]).
+:- http_handler(root(api/categoria_enfermedad), cors_options_handler, [method(options)]).
+
 :- http_handler(root(api/enfermedades_posibles), api_enfermedades_posibles_handler, [method(post)]).
-:- http_handler(root(api), cors_options_handler, [method(options), prefix]).
+:- http_handler(root(api/enfermedades_posibles), cors_options_handler, [method(options)]).
 
 add_cors_headers :-
 	format('Access-Control-Allow-Origin: *~n'),
