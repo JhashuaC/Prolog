@@ -4,7 +4,7 @@
 :- use_module(library(http/thread_httpd)).
 :- use_module(library(http/http_dispatch)).
 :- use_module(library(http/http_json)).
-:- use_module(library(http/http_cors)).
+:- use_module(library(http/http_cors)).   % vamos a usar para facilidad
 
 :- use_module(server(routes/api_diagnose)).
 :- use_module(server(routes/api_symptoms)).
@@ -13,23 +13,17 @@
 :- use_module(server(utils/logger)).
 
 % ===========================
-%  CORS Y PRE-FLIGHT LIBRE
+%  CORS CONFIG
 % ===========================
 
-allow_all(_Request) :-
-    format('Access-Control-Allow-Origin: *~n'),
-    format('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS~n'),
-    format('Access-Control-Allow-Headers: *~n').
+:- set_setting(http:cors, [*]).  % permitir todos los orígenes
+:- set_setting(http:cors_headers, ['Content-Type', 'Authorization', 'Accept']).
 
-% Handler global de preflight OPTIONS
-:- http_handler('/',
-    cors_any_options_handler,
-    [method(options), prefix]).
-
-cors_any_options_handler(Request) :-
-    allow_all(Request),
-    format('Content-type: text/plain~n~n'),
-    format('OK~n').
+enable_cors(Request) :-
+	cors_enable(Request,
+		[
+			methods([get, post, options]),
+			headers(['Content-Type', 'Authorization', 'Accept'])]).
 
 % ===========================
 %  HANDLERS
@@ -37,6 +31,7 @@ cors_any_options_handler(Request) :-
 
 :- http_handler('/', ui_page, [prefix]).
 :- http_handler('/app.js', serve_app_js, [prefix]).
+
 :- http_handler('/api/ping', api_ping_handler, [prefix]).
 :- http_handler('/api/symptoms', api_symptoms_handler, [prefix]).
 :- http_handler('/api/diagnose', api_diagnose_handler, [prefix]).
@@ -45,20 +40,32 @@ cors_any_options_handler(Request) :-
 :- http_handler('/api/categoria_enfermedad', api_categoria_enfermedad_handler, [prefix]).
 :- http_handler('/api/enfermedades_posibles', api_enfermedades_posibles_handler, [prefix]).
 
+% Handler para cualquier OPTIONS (preflight)
+:- http_handler('/', cors_options_handler, [method(options), prefix]).
+
+% ===========================
+%  OPTIONS / Preflight
+% ===========================
+
+cors_options_handler(Request) :-
+	enable_cors(Request),
+	format('Content-type: text/plain~n~n'),
+	format('').
+
 % ===========================
 %  API ROUTES
 % ===========================
 
 api_ping_handler(Request) :-
-	allow_all(Request),
-	reply_json_dict(_{ok : true}).
+	enable_cors(Request),
+	reply_json_dict(_{ok : true, ts : now}).
 
 api_symptoms_handler(Request) :-
-	allow_all(Request),
+	enable_cors(Request),
 	api_symptoms(Request).
 
 api_diagnose_handler(Request) :-
-	allow_all(Request),
+	enable_cors(Request),
 	catch(api_diagnose(Request),
 		E,
 		(message_to_string(E, Msg),
@@ -68,19 +75,19 @@ api_diagnose_handler(Request) :-
 				[status(500)]))).
 
 api_sintomas_de_handler(Request) :-
-	allow_all(Request),
+	enable_cors(Request),
 	api_queries : api_sintomas_de(Request).
 
 api_enfermedades_por_sintoma_handler(Request) :-
-	allow_all(Request),
+	enable_cors(Request),
 	api_queries : api_enfermedades_por_sintoma(Request).
 
 api_categoria_enfermedad_handler(Request) :-
-	allow_all(Request),
+	enable_cors(Request),
 	api_queries : api_categoria_enfermedad(Request).
 
 api_enfermedades_posibles_handler(Request) :-
-	allow_all(Request),
+	enable_cors(Request),
 	api_queries : api_enfermedades_posibles(Request).
 
 % ===========================
@@ -88,7 +95,7 @@ api_enfermedades_posibles_handler(Request) :-
 % ===========================
 
 serve_app_js(_Request) :-
-	allow_all(_Request),
+	enable_cors(_Request),
 	http_reply_file('./static/app.js',
 		[unsafe(true), mime_type('application/javascript')],
 		[]).
@@ -106,7 +113,7 @@ server :-
 		E,
 		(log(red, 'Error iniciando servidor: ~w~n', [E]),
 			fail)),
-	log(green, '✅ Servidor iniciado en puerto ~w (sin restricciones)~n', [Port]).
+	log(green, 'Servidor iniciado en puerto ~w (modo abierto)~n', [Port]).
 
 stop :-
 	findall(P,
