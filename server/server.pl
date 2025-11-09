@@ -4,7 +4,7 @@
 :- use_module(library(http/thread_httpd)).
 :- use_module(library(http/http_dispatch)).
 :- use_module(library(http/http_json)).
-:- use_module(library(http/http_cors)).   % vamos a usar para facilidad
+:- use_module(library(http/http_cors)).
 
 :- use_module(server(routes/api_diagnose)).
 :- use_module(server(routes/api_symptoms)).
@@ -13,11 +13,10 @@
 :- use_module(server(utils/logger)).
 
 % ===========================
-%  CORS CONFIG
+%  CORS CONFIG — TODO PERMITIDO
 % ===========================
 
 :- set_setting(http:cors, [*]).  % permitir todos los orígenes
-:- set_setting(http:cors_headers, ['Content-Type', 'Authorization', 'Accept']).
 
 enable_cors(Request) :-
 	cors_enable(Request,
@@ -39,18 +38,16 @@ enable_cors(Request) :-
 :- http_handler('/api/enfermedades_por_sintoma', api_enfermedades_por_sintoma_handler, [prefix]).
 :- http_handler('/api/categoria_enfermedad', api_categoria_enfermedad_handler, [prefix]).
 :- http_handler('/api/enfermedades_posibles', api_enfermedades_posibles_handler, [prefix]).
-
-% Handler para cualquier OPTIONS (preflight)
 :- http_handler('/', cors_options_handler, [method(options), prefix]).
 
 % ===========================
-%  OPTIONS / Preflight
+%  OPTIONS (Preflight)
 % ===========================
 
 cors_options_handler(Request) :-
 	enable_cors(Request),
 	format('Content-type: text/plain~n~n'),
-	format('').
+	format('OK~n').
 
 % ===========================
 %  API ROUTES
@@ -94,8 +91,8 @@ api_enfermedades_posibles_handler(Request) :-
 %  STATIC FILES
 % ===========================
 
-serve_app_js(_Request) :-
-	enable_cors(_Request),
+serve_app_js(Request) :-
+	enable_cors(Request),
 	http_reply_file('./static/app.js',
 		[unsafe(true), mime_type('application/javascript')],
 		[]).
