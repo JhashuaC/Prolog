@@ -1,4 +1,4 @@
-:- module(server, [server/1, stop/0, stop_all/0]).
+:- module(server, [server/0, stop/0]).
 :- set_prolog_flag(encoding, utf8).
 
 :- use_module(library(http/thread_httpd)).
@@ -9,8 +9,20 @@
 :- use_module(server(routes/api_diagnose)).
 :- use_module(server(routes/api_symptoms)).
 :- use_module(server(routes/ui_page)).
-:- use_module(server(utils/logger)).
 :- use_module(server(routes/api_queries)).
+:- use_module(server(utils/logger)).
+
+% ===========================
+%  CORS CONFIG
+% ===========================
+
+:- set_setting(http:cors, [*]).
+:- set_setting(http:cors_headers, ['Content-Type', 'Authorization', 'Accept']).
+
+enable_cors(Request) :-
+	cors_enable(Request,
+		[
+			methods([get, post, options])]).
 
 % ===========================
 %  HANDLERS
@@ -22,39 +34,40 @@
 :- http_handler('/api/ping', api_ping_handler, [method(get)]).
 :- http_handler('/api/symptoms', api_symptoms_handler, [method(get)]).
 :- http_handler('/api/diagnose', api_diagnose_handler, [method(post)]).
+:- http_handler('/api/diagnose', cors_options_handler, [method(options)]).
 :- http_handler('/api/sintomas_de', api_sintomas_de_handler, [method(post)]).
+:- http_handler('/api/sintomas_de', cors_options_handler, [method(options)]).
 :- http_handler('/api/enfermedades_por_sintoma', api_enfermedades_por_sintoma_handler, [method(post)]).
+:- http_handler('/api/enfermedades_por_sintoma', cors_options_handler, [method(options)]).
 :- http_handler('/api/categoria_enfermedad', api_categoria_enfermedad_handler, [method(post)]).
+:- http_handler('/api/categoria_enfermedad', cors_options_handler, [method(options)]).
 :- http_handler('/api/enfermedades_posibles', api_enfermedades_posibles_handler, [method(post)]).
-:- http_handler('/api', cors_options_handler, [method(options), prefix]).
+:- http_handler('/api/enfermedades_posibles', cors_options_handler, [method(options)]).
 
 % ===========================
-%  CORS
+%  OPTIONS (Preflight)
 % ===========================
 
-add_cors_headers :-
-	format('Access-Control-Allow-Origin: *~n'),
-	format('Access-Control-Allow-Methods: GET, POST, OPTIONS~n'),
-	format('Access-Control-Allow-Headers: Content-Type, Authorization, Accept~n').
-
-cors_options_handler(_Request) :-
-	add_cors_headers,
-	format('Status: 204~n~n').
+cors_options_handler(Request) :-
+	enable_cors(Request),
+	reply_json_dict(_{
+			},
+		[status(204)]).
 
 % ===========================
 %  API ROUTES
 % ===========================
 
-api_ping_handler(_Request) :-
-	add_cors_headers,
+api_ping_handler(Request) :-
+	enable_cors(Request),
 	reply_json_dict(_{ok : true, ts : now}).
 
 api_symptoms_handler(Request) :-
-	add_cors_headers,
+	enable_cors(Request),
 	api_symptoms(Request).
 
 api_diagnose_handler(Request) :-
-	add_cors_headers,
+	enable_cors(Request),
 	catch(api_diagnose(Request),
 		E,
 		(message_to_string(E, Msg),
@@ -64,19 +77,19 @@ api_diagnose_handler(Request) :-
 				[status(500)]))).
 
 api_sintomas_de_handler(Request) :-
-	add_cors_headers,
+	enable_cors(Request),
 	api_queries : api_sintomas_de(Request).
 
 api_enfermedades_por_sintoma_handler(Request) :-
-	add_cors_headers,
+	enable_cors(Request),
 	api_queries : api_enfermedades_por_sintoma(Request).
 
 api_categoria_enfermedad_handler(Request) :-
-	add_cors_headers,
+	enable_cors(Request),
 	api_queries : api_categoria_enfermedad(Request).
 
 api_enfermedades_posibles_handler(Request) :-
-	add_cors_headers,
+	enable_cors(Request),
 	api_queries : api_enfermedades_posibles(Request).
 
 % ===========================
@@ -92,50 +105,26 @@ serve_app_js(_Request) :-
 %  SERVER CONTROL
 % ===========================
 
-server(Port) :-
-	ignore(stop_all),
+server :-
+	getenv('PORT', PortAtom),
+	atom_number(PortAtom, Port),
+	ignore(stop),
 	catch(http_server(http_dispatch,
 			[port(Port), ip('0.0.0.0'), encoding(utf8)]),
 		E,
 		(log(red, 'Error iniciando servidor: ~w~n', [E]),
 			fail)),
-	log(green, 'Servidor iniciado en puerto ~w (escuchando en 0.0.0.0)~n', [Port]).
+	log(green, 'Servidor iniciado en puerto ~w (Railway)~n', [Port]).
 
 stop :-
-	stop_all.
-
-stop_all :-
-	findall(Port,
-		(current_prolog_flag(http_server, Servers),
-			member(_{port : Port}, Servers)),
+	findall(P,
+		(current_prolog_flag(http_server, S),
+			member(_{port : P}, S)),
 		Ports),
-	(Ports == [] ->
-	log(yellow, 'No hay servidores activos.~n', []);
 	forall(member(P, Ports),
-			(log(red, 'Cerrando servidor en puerto ~w...~n', [P]),
-				catch(http_stop_server(P,
-						[force(true)]),
-					_,
-					true)))),
-	sleep(0.2),
-	repeat,
-	findall(Id - Name,
-		(thread_property(Id,
-				alias(Name)),
-			(sub_atom(Name, 0, _, _, 'http@');
-	sub_atom(Name, 0, _, _, 'httpd@'))),
-		List),
-	(List == [] ->
-	!;
-	forall(member(Id - Name, List),
-			((catch(thread_signal(Id, abort),
-						_,
-						true),
-					catch(thread_join(Id, _),
-						_,
-						true)) ->
-	log(yellow, ' Hilo residual terminado: ~w~n', [Name]);
-	log(gray, 'Esperando cierre natural: ~w~n', [Name]))),
-		sleep(0.1),
-		fail),
-	log(green, ' Todos los hilos HTTP terminados correctamente.~n', []).
+		(log(red, 'Deteniendo servidor ~w~n', [P]),
+			catch(http_stop_server(P,
+					[force(true)]),
+				_,
+				true))),
+	log(green, 'Servidores detenidos.~n', []).
