@@ -24,8 +24,8 @@
 
 add_cors_headers :-
 	format('Access-Control-Allow-Origin: *~n'),
-	format('Access-Control-Allow-Methods: GET, POST, OPTIONS~n'),
-	format('Access-Control-Allow-Headers: Content-Type, Authorization~n').
+	format('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS~n'),
+	format('Access-Control-Allow-Headers: Content-Type, Authorization, Accept~n').
 
 cors_options_handler(_Request) :-
 	add_cors_headers,
