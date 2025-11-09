@@ -4,6 +4,7 @@
 :- use_module(library(http/thread_httpd)).
 :- use_module(library(http/http_dispatch)).
 :- use_module(library(http/http_json)).
+:- use_module(library(http/http_cors)).
 
 :- use_module(server(routes/api_diagnose)).
 :- use_module(server(routes/api_symptoms)).
@@ -12,52 +13,47 @@
 :- use_module(server(utils/logger)).
 
 % ===========================
-%  CABECERAS LIBRES (sin CORS)
+%  CORS: PERMITIR TODO
 % ===========================
 
-allow_all_headers :-
+allow_all(_Request) :-
 	format('Access-Control-Allow-Origin: *~n'),
-	format('Access-Control-Allow-Methods: GET, POST, OPTIONS, PUT, DELETE~n'),
+	format('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS~n'),
 	format('Access-Control-Allow-Headers: *~n').
+
+% Handler genérico para OPTIONS (preflight)
+:- http_handler('/',
+    (   allow_all(_),
+        format('~n'), halt), [method(options), prefix]).
 
 % ===========================
 %  HANDLERS
 % ===========================
 
-:- http_handler('/', ui_page, []).
-:- http_handler('/app.js', serve_app_js, []).
-
-:- http_handler('/api/ping', api_ping_handler, []).
-:- http_handler('/api/symptoms', api_symptoms_handler, []).
-:- http_handler('/api/diagnose', api_diagnose_handler, []).
-:- http_handler('/api/sintomas_de', api_sintomas_de_handler, []).
-:- http_handler('/api/enfermedades_por_sintoma', api_enfermedades_por_sintoma_handler, []).
-:- http_handler('/api/categoria_enfermedad', api_categoria_enfermedad_handler, []).
-:- http_handler('/api/enfermedades_posibles', api_enfermedades_posibles_handler, []).
-:- http_handler('/api/', cors_ok_handler, [method(options), prefix]).
-
-% ===========================
-%  RESPUESTA GENÉRICA A OPTIONS
-% ===========================
-
-cors_ok_handler(_Request) :-
-	allow_all_headers,
-	format('Status: 204~n~n').
+:- http_handler('/', ui_page, [prefix]).
+:- http_handler('/app.js', serve_app_js, [prefix]).
+:- http_handler('/api/ping', api_ping_handler, [prefix]).
+:- http_handler('/api/symptoms', api_symptoms_handler, [prefix]).
+:- http_handler('/api/diagnose', api_diagnose_handler, [prefix]).
+:- http_handler('/api/sintomas_de', api_sintomas_de_handler, [prefix]).
+:- http_handler('/api/enfermedades_por_sintoma', api_enfermedades_por_sintoma_handler, [prefix]).
+:- http_handler('/api/categoria_enfermedad', api_categoria_enfermedad_handler, [prefix]).
+:- http_handler('/api/enfermedades_posibles', api_enfermedades_posibles_handler, [prefix]).
 
 % ===========================
 %  API ROUTES
 % ===========================
 
-api_ping_handler(_Request) :-
-	allow_all_headers,
-	reply_json_dict(_{ok : true, ts : now}).
+api_ping_handler(Request) :-
+	allow_all(Request),
+	reply_json_dict(_{ok : true}).
 
 api_symptoms_handler(Request) :-
-	allow_all_headers,
+	allow_all(Request),
 	api_symptoms(Request).
 
 api_diagnose_handler(Request) :-
-	allow_all_headers,
+	allow_all(Request),
 	catch(api_diagnose(Request),
 		E,
 		(message_to_string(E, Msg),
@@ -67,19 +63,19 @@ api_diagnose_handler(Request) :-
 				[status(500)]))).
 
 api_sintomas_de_handler(Request) :-
-	allow_all_headers,
+	allow_all(Request),
 	api_queries : api_sintomas_de(Request).
 
 api_enfermedades_por_sintoma_handler(Request) :-
-	allow_all_headers,
+	allow_all(Request),
 	api_queries : api_enfermedades_por_sintoma(Request).
 
 api_categoria_enfermedad_handler(Request) :-
-	allow_all_headers,
+	allow_all(Request),
 	api_queries : api_categoria_enfermedad(Request).
 
 api_enfermedades_posibles_handler(Request) :-
-	allow_all_headers,
+	allow_all(Request),
 	api_queries : api_enfermedades_posibles(Request).
 
 % ===========================
@@ -87,7 +83,7 @@ api_enfermedades_posibles_handler(Request) :-
 % ===========================
 
 serve_app_js(_Request) :-
-	allow_all_headers,
+	allow_all(_Request),
 	http_reply_file('./static/app.js',
 		[unsafe(true), mime_type('application/javascript')],
 		[]).
@@ -100,13 +96,12 @@ server :-
 	(getenv('PORT', PortAtom) ->
 	atom_number(PortAtom, Port);
 	Port = 3000),
-	ignore(stop),
 	catch(http_server(http_dispatch,
 			[port(Port), ip('0.0.0.0'), encoding(utf8)]),
 		E,
 		(log(red, 'Error iniciando servidor: ~w~n', [E]),
 			fail)),
-	log(green, 'Servidor iniciado en puerto ~w (modo libre, sin CORS)~n', [Port]).
+	log(green, '✅ Servidor iniciado en puerto ~w (sin restricciones)~n', [Port]).
 
 stop :-
 	findall(P,
