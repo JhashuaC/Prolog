@@ -19,7 +19,7 @@
 
 :- http_handler(root(api/ping), api_ping_handler, [method(get)]).
 :- http_handler(root(api/symptoms), api_symptoms_handler, [method(get)]).
-:- http_handler(root(api), handle_api_request, []).  % handler genérico para todo /api/*
+:- http_handler(root(api), handle_api_request, [prefix]).
 :- http_handler(root(api), cors_options_handler, [method(options), prefix]).
 
 add_cors_headers :-
