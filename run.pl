@@ -14,4 +14,6 @@ main :-
 		E,
 		(print_message(error, E),
 			halt(1))),
-	thread_get_message(quit).
+	repeat,
+	thread_get_message(_),
+	fail.
