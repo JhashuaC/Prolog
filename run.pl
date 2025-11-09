@@ -1,3 +1,4 @@
+% run.pl
 :- initialization(main, main).
 :- set_prolog_flag(encoding, utf8).
 
@@ -6,7 +7,7 @@
 
 main :-
 	catch(stop, _, true),
-	format('🚀 Iniciando servidor (Railway, puerto desde env PORT)~n', []),
+	format('Iniciando servidor (Railway, puerto desde env PORT)~n', []),
 	catch(server,
 		E,
 		(print_message(error, E),

@@ -1,3 +1,4 @@
+% server/server.pl
 :- module(server, [server/0, stop/0]).
 :- set_prolog_flag(encoding, utf8).
 
@@ -118,3 +119,13 @@ stop :-
 				_,
 				true))),
 	log(green, 'Servidores detenidos.~n', []).
+
+% ===========================
+%  CORS FIX PARA TODAS LAS RUTAS /api
+% ===========================
+:- http_handler(root(api), handle_api_options, [method(options), prefix]).
+
+handle_api_options(_Request) :-
+    send_cors_headers,
+    format('Content-type: text/plain~n~n'),
+    format('OK~n').
