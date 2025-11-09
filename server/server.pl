@@ -19,11 +19,7 @@
 
 :- http_handler(root(api/ping), api_ping_handler, [method(get)]).
 :- http_handler(root(api/symptoms), api_symptoms_handler, [method(get)]).
-:- http_handler(root(api/diagnose), api_diagnose_handler, []).
-:- http_handler(root(api/sintomas_de), api_sintomas_de_handler, []).
-:- http_handler(root(api/enfermedades_por_sintoma), api_enfermedades_por_sintoma_handler, []).
-:- http_handler(root(api/categoria_enfermedad), api_categoria_enfermedad_handler, []).
-:- http_handler(root(api/enfermedades_posibles), api_enfermedades_posibles_handler, []).
+:- http_handler(root(api), handle_api_request, []).  % handler genérico para todo /api/*
 :- http_handler(root(api), cors_options_handler, [method(options), prefix]).
 
 add_cors_headers :-
@@ -43,36 +39,43 @@ api_symptoms_handler(Request) :-
 	add_cors_headers,
 	api_symptoms(Request).
 
-api_diagnose_handler(Request) :-
-	member(method(options),
+handle_api_request(Request) :-
+	member(path(Path),
 		Request),
-	!,
-	cors_options_handler(Request).
-api_diagnose_handler(Request) :-
+	(sub_atom(Path, _, _, 0, '/api/diagnose') ->
 	add_cors_headers,
+		(member(method(post),
+				Request) ->
 	catch(api_diagnose(Request),
-		E,
-		(message_to_string(E, Msg),
-			reply_json_dict(_{
-					error : Msg
+				E,
+				(message_to_string(E, Msg),
+					reply_json_dict(_{
+							error : Msg
+							},
+						[status(500)])));
+	member(method(options),
+				Request) ->
+	cors_options_handler(Request);
+	reply_json_dict(_{
+					error : 'Método no permitido'
 					},
-				[status(500)]))).
-
-api_sintomas_de_handler(Request) :-
+				[status(405)]));
+	sub_atom(Path, _, _, 0, '/api/sintomas_de') ->
 	add_cors_headers,
-	api_queries : api_sintomas_de(Request).
-
-api_enfermedades_por_sintoma_handler(Request) :-
+		api_queries : api_sintomas_de(Request);
+	sub_atom(Path, _, _, 0, '/api/enfermedades_por_sintoma') ->
 	add_cors_headers,
-	api_queries : api_enfermedades_por_sintoma(Request).
-
-api_categoria_enfermedad_handler(Request) :-
+		api_queries : api_enfermedades_por_sintoma(Request);
+	sub_atom(Path, _, _, 0, '/api/categoria_enfermedad') ->
 	add_cors_headers,
-	api_queries : api_categoria_enfermedad(Request).
-
-api_enfermedades_posibles_handler(Request) :-
+		api_queries : api_categoria_enfermedad(Request);
+	sub_atom(Path, _, _, 0, '/api/enfermedades_posibles') ->
 	add_cors_headers,
-	api_queries : api_enfermedades_posibles(Request).
+		api_queries : api_enfermedades_posibles(Request);
+	reply_json_dict(_{
+				error : 'Ruta no encontrada'
+				},
+			[status(404)])).
 
 serve_app_js(_Request) :-
 	http_reply_file('./static/app.js',
