@@ -86,11 +86,11 @@ serve_app_js(_Request) :-
 server(Port) :-
 	ignore(stop_all),
 	catch(http_server(http_dispatch,
-			[port(Port), encoding(utf8)]),
+			[port(Port), ip('0.0.0.0'), encoding(utf8)]),
 		E,
 		(log(red, 'Error iniciando servidor: ~w~n', [E]),
 			fail)),
-	log(green, 'Servidor iniciado en puerto ~w~n', [Port]).
+	log(green, 'Servidor iniciado en puerto ~w (escuchando en 0.0.0.0)~n', [Port]).
 
 stop :-
 	stop_all.
